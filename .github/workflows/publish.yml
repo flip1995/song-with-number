@@ -1,0 +1,47 @@
+name: Publish
+
+on: release
+
+jobs:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: song-with-number
+            asset_name: song-with-number-linux.zip
+          - os: macos-latest
+            artifact_name: song-with-number
+            asset_name: song-with-number-macos.zip
+          - os: windows-latest
+            artifact_name: song-with-number.exe
+
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: stable
+    - uses: actions/checkout@v1
+    - name: Build
+      run: cargo build --release
+    - name: Compress files (Linux, macOS)
+      if: matrix.os != 'windows-latest'
+      run: zip -j ${{ matrix.asset_name }} target/release/${{ matrix.artifact_name }}
+    - name: Upload binaries to release (Linux, macOS)
+      if: matrix.os != 'windows-latest'
+      uses: Shopify/upload-to-release@master
+      with:
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.asset_name }}
+        content-type: application/zip
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload binaries to release (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: Shopify/upload-to-release@master
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: target/release/${{ matrix.artifact_name }}
+        content-type: application/vnd.microsoft.portable-executable
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
